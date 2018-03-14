@@ -28,6 +28,7 @@ import com.alibaba.android.arouter.facade.template.ILogger;
 import com.alibaba.android.arouter.thread.DefaultPoolExecutor;
 import com.alibaba.android.arouter.utils.Consts;
 import com.alibaba.android.arouter.utils.DefaultLogger;
+import com.alibaba.android.arouter.utils.LogUtils;
 import com.alibaba.android.arouter.utils.TextUtils;
 
 import java.lang.reflect.Field;
@@ -42,12 +43,15 @@ import java.util.concurrent.ThreadPoolExecutor;
  * @since 16/8/16 14:39
  */
 final class _ARouter {
+    // 日志工具
     static ILogger logger = new DefaultLogger(Consts.TAG); // 日志工具
     private volatile static boolean monitorMode = false;
+    // debug
     private volatile static boolean debuggable = false;
     private volatile static boolean autoInject = false;
     private volatile static _ARouter instance = null;
     private volatile static boolean hasInit = false;
+    // 线程池
     private volatile static ThreadPoolExecutor executor = DefaultPoolExecutor.getInstance();
     private static Context mContext;
 
@@ -56,10 +60,17 @@ final class _ARouter {
     private _ARouter() {
     }
 
+    /**
+     * @param application
+     * @return
+     */
     protected static synchronized boolean init(Application application) {
+        LogUtils.e("_ARouter", "init");
         mContext = application;
+        // 加载生成的类
         LogisticsCenter.init(mContext, executor);
-        logger.info(Consts.TAG, "ARouter init success!");
+
+        // 初始化完成
         hasInit = true;
 
         // It's not a good idea.
@@ -97,11 +108,17 @@ final class _ARouter {
         }
     }
 
+    /**
+     * debug 模式
+     */
     static synchronized void openDebug() {
         debuggable = true;
         logger.info(Consts.TAG, "ARouter openDebug");
     }
 
+    /**
+     * 开启日志
+     */
     static synchronized void openLog() {
         logger.showLog(true);
         logger.info(Consts.TAG, "ARouter openLog");
@@ -158,6 +175,11 @@ final class _ARouter {
         return monitorMode;
     }
 
+    /**
+     * debug
+     *
+     * @return
+     */
     static boolean debuggable() {
         return debuggable;
     }

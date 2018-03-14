@@ -15,11 +15,19 @@ import java.util.Map;
  */
 public class TextUtils {
 
+    /**
+     * String 是否为null判断
+     *
+     * @param cs
+     * @return
+     */
     public static boolean isEmpty(final CharSequence cs) {
         return cs == null || cs.length() == 0;
     }
 
     /**
+     * 打印堆栈信息
+     * <p>
      * Print thread stack
      */
     public static String formatStackTrace(StackTraceElement[] stackTrace) {
@@ -33,16 +41,20 @@ public class TextUtils {
 
     /**
      * Split query parameters
+     * <p>
+     * 分割String的参数
+     *
      * @param rawUri raw uri
      * @return map with params
      */
     public static Map<String, String> splitQueryParameters(Uri rawUri) {
         String query = rawUri.getEncodedQuery();
 
+        // 返回空的 Map<String, String>
         if (query == null) {
             return Collections.emptyMap();
         }
-
+        //
         Map<String, String> paramMap = new LinkedHashMap<>();
         int start = 0;
         do {
@@ -70,6 +82,8 @@ public class TextUtils {
 
     /**
      * Split key with |
+     * <p>
+     * 获取|左边字段
      *
      * @param key raw key
      * @return left key
@@ -84,6 +98,8 @@ public class TextUtils {
 
     /**
      * Split key with |
+     * <p>
+     * 获取|右边字段
      *
      * @param key raw key
      * @return right key

@@ -18,9 +18,19 @@ import static com.alibaba.android.arouter.utils.Consts.LAST_VERSION_NAME;
  * @since 2017/8/8 下午8:19
  */
 public class PackageUtils {
+
+    //
+    // 新的版本名称
     private static String NEW_VERSION_NAME;
+    // 新的版本号
     private static int NEW_VERSION_CODE;
 
+    /**
+     * 判断是否为新版本
+     *
+     * @param context
+     * @return
+     */
     public static boolean isNewVersion(Context context) {
         PackageInfo packageInfo = getPackageInfo(context);
         if (null != packageInfo) {
@@ -32,7 +42,7 @@ public class PackageUtils {
                 // new version
                 NEW_VERSION_NAME = versionName;
                 NEW_VERSION_CODE = versionCode;
-
+                //
                 return true;
             } else {
                 return false;
@@ -42,6 +52,11 @@ public class PackageUtils {
         }
     }
 
+    /**
+     * 存储版本号
+     *
+     * @param context
+     */
     public static void updateVersion(Context context) {
         if (!android.text.TextUtils.isEmpty(NEW_VERSION_NAME) && NEW_VERSION_CODE != 0) {
             SharedPreferences sp = context.getSharedPreferences(AROUTER_SP_CACHE_KEY, Context.MODE_PRIVATE);
@@ -49,6 +64,12 @@ public class PackageUtils {
         }
     }
 
+    /**
+     * PackageInfo
+     *
+     * @param context
+     * @return
+     */
     private static PackageInfo getPackageInfo(Context context) {
         PackageInfo packageInfo = null;
         try {

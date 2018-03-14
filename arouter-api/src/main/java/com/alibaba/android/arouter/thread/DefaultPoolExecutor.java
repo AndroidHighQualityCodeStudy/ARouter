@@ -16,6 +16,8 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Executors
+ * <p>
+ * 线程池
  *
  * @author 正纬 <a href="mailto:zhilong.liu@aliyun.com">Contact me.</a>
  * @version 1.0
@@ -23,12 +25,17 @@ import java.util.concurrent.TimeUnit;
  */
 public class DefaultPoolExecutor extends ThreadPoolExecutor {
     //    Thread args
+    // cpu
     private static final int CPU_COUNT = Runtime.getRuntime().availableProcessors();
+    // cpu + 1
     private static final int INIT_THREAD_COUNT = CPU_COUNT + 1;
+    // cpu + 1
     private static final int MAX_THREAD_COUNT = INIT_THREAD_COUNT;
+    // keepAliveTime
     private static final long SURPLUS_THREAD_LIFE = 30L;
 
     private static DefaultPoolExecutor instance;
+
 
     public static DefaultPoolExecutor getInstance() {
         if (null == instance) {

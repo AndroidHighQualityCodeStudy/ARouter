@@ -19,14 +19,18 @@ import java.util.Map;
  * @since 2017/2/23 下午1:39
  */
 class Warehouse {
+
+    // 存储 ARouter$$Group$$app.class
     // Cache route and metas
     static Map<String, Class<? extends IRouteGroup>> groupsIndex = new HashMap<>();
     static Map<String, RouteMeta> routes = new HashMap<>();
 
+    // 存储 IProvider
     // Cache provider
     static Map<Class, IProvider> providers = new HashMap<>();
     static Map<String, RouteMeta> providersIndex = new HashMap<>();
 
+    // 存储 IInterceptor
     // Cache interceptor
     static Map<Integer, Class<? extends IInterceptor>> interceptorsIndex = new UniqueKeyTreeMap<>("More than one interceptors use same priority [%s]");
     static List<IInterceptor> interceptors = new ArrayList<>();

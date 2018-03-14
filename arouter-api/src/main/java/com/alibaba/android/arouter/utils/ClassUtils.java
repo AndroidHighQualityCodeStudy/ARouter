@@ -58,6 +58,7 @@ public class ClassUtils {
      * @return 所有class的集合
      */
     public static Set<String> getFileNameByPackageName(Context context, final String packageName) throws PackageManager.NameNotFoundException, IOException, InterruptedException {
+        LogUtils.e("ClassUtils", "getFileNameByPackageName packageName: " + packageName);
         final Set<String> classNames = new HashSet<>();
 
         List<String> paths = getSourcePaths(context);
@@ -103,6 +104,15 @@ public class ClassUtils {
         parserCtl.await();
 
         Log.d(Consts.TAG, "Filter " + classNames.size() + " classes by packageName <" + packageName + ">");
+        LogUtils.e("ClassUtils", "classNames: " + classNames);
+
+        //[com.alibaba.android.arouter.routes.ARouter$$Root$$arouterapi,
+        // com.alibaba.android.arouter.routes.ARouter$$Root$$app,
+        // com.alibaba.android.arouter.routes.ARouter$$Providers$$app,
+        // com.alibaba.android.arouter.routes.ARouter$$Providers$$arouterapi,
+        // com.alibaba.android.arouter.routes.ARouter$$Group$$app,
+        // com.alibaba.android.arouter.routes.ARouter$$Group$$arouter]
+
         return classNames;
     }
 
@@ -115,15 +125,19 @@ public class ClassUtils {
      * @throws IOException
      */
     public static List<String> getSourcePaths(Context context) throws PackageManager.NameNotFoundException, IOException {
+        LogUtils.e("ClassUtils", "---getSourcePaths---");
+        //
         ApplicationInfo applicationInfo = context.getPackageManager().getApplicationInfo(context.getPackageName(), 0);
+        LogUtils.e("ClassUtils", "applicationInfo.sourceDir: " + applicationInfo.sourceDir);
+        // /data/app/com.example.arouterdemo.ui-1/base.apk
         File sourceApk = new File(applicationInfo.sourceDir);
-
+        //
         List<String> sourcePaths = new ArrayList<>();
         sourcePaths.add(applicationInfo.sourceDir); //add the default apk path
-
-        //the prefix of extracted file, ie: test.classes
+        // the prefix of extracted file, ie: test.classes
+        // base.apk.classes
         String extractedFilePrefix = sourceApk.getName() + EXTRACTED_NAME_EXT;
-
+        LogUtils.e("ClassUtils", "extractedFilePrefix: " + extractedFilePrefix);
 //        如果VM已经支持了MultiDex，就不要去Secondary Folder加载 Classesx.zip了，那里已经么有了
 //        通过是否存在sp中的multidex.version是不准确的，因为从低版本升级上来的用户，是包含这个sp配置的
         if (!isVMMultidexCapable()) {
@@ -147,16 +161,37 @@ public class ClassUtils {
         if (ARouter.debuggable()) { // Search instant run support only debuggable
             sourcePaths.addAll(tryLoadInstantRunDexFile(applicationInfo));
         }
+
+        LogUtils.e("ClassUtils", "sourcePaths: " + sourcePaths);
+        // [/data/app/com.example.arouterdemo.ui-2/base.apk,
+        // /data/app/com.example.arouterdemo.ui-2/split_lib_dependencies_apk.apk,
+        // /data/app/com.example.arouterdemo.ui-2/split_lib_slice_0_apk.apk,
+        // /data/app/com.example.arouterdemo.ui-2/split_lib_slice_1_apk.apk,
+        // /data/app/com.example.arouterdemo.ui-2/split_lib_slice_2_apk.apk,
+        // /data/app/com.example.arouterdemo.ui-2/split_lib_slice_3_apk.apk,
+        // /data/app/com.example.arouterdemo.ui-2/split_lib_slice_4_apk.apk,
+        // /data/app/com.example.arouterdemo.ui-2/split_lib_slice_5_apk.apk,
+        // /data/app/com.example.arouterdemo.ui-2/split_lib_slice_6_apk.apk,
+        // /data/app/com.example.arouterdemo.ui-2/split_lib_slice_7_apk.apk,
+        // /data/app/com.example.arouterdemo.ui-2/split_lib_slice_8_apk.apk,
+        // /data/app/com.example.arouterdemo.ui-2/split_lib_slice_9_apk.apk]
+
+
         return sourcePaths;
     }
 
     /**
      * Get instant run dex path, used to catch the branch usingApkSplits=false.
+     * <p>
+     * 分隔开的 dex
      */
     private static List<String> tryLoadInstantRunDexFile(ApplicationInfo applicationInfo) {
+        LogUtils.d("ClassUtils", "---tryLoadInstantRunDexFile---");
+        //
         List<String> instantRunSourcePaths = new ArrayList<>();
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && null != applicationInfo.splitSourceDirs) {
+        // 21版本
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP &&
+                null != applicationInfo.splitSourceDirs) {
             // add the split apk, normally for InstantRun, and newest version.
             instantRunSourcePaths.addAll(Arrays.asList(applicationInfo.splitSourceDirs));
             Log.d(Consts.TAG, "Found InstantRun support");
@@ -183,10 +218,14 @@ public class ClassUtils {
             }
         }
 
+        LogUtils.d("ClassUtils", "instantRunSourcePaths: " + instantRunSourcePaths);
+
         return instantRunSourcePaths;
     }
 
     /**
+     * Multidex是否可用
+     * <p>
      * Identifies if the current VM has a native support for multidex, meaning there is no need for
      * additional installation by this library.
      *
@@ -197,8 +236,10 @@ public class ClassUtils {
         String vmName = null;
 
         try {
+            // 阿里云os的判断
             if (isYunOS()) {    // YunOS需要特殊判断
                 vmName = "'YunOS'";
+                // 是否支持multidex
                 isMultidexCapable = Integer.valueOf(System.getProperty("ro.build.version.sdk")) >= 21;
             } else {    // 非YunOS原生Android
                 vmName = "'Android'";
@@ -228,6 +269,8 @@ public class ClassUtils {
 
     /**
      * 判断系统是否为YunOS系统
+     * <p>
+     * 阿里云 OS判断
      */
     private static boolean isYunOS() {
         try {

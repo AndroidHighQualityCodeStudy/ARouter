@@ -21,6 +21,7 @@ public final class Consts {
     public static final String AROUTER_SP_CACHE_KEY = "SP_AROUTER_CACHE";
     public static final String AROUTER_SP_KEY_MAP = "ROUTER_MAP";
 
+    // 上次的版本名称 版本号
     public static final String LAST_VERSION_NAME = "LAST_VERSION_NAME";
     public static final String LAST_VERSION_CODE = "LAST_VERSION_CODE";
 }

@@ -16,6 +16,7 @@ import com.alibaba.android.arouter.facade.template.IRouteRoot;
 import com.alibaba.android.arouter.launcher.ARouter;
 import com.alibaba.android.arouter.utils.ClassUtils;
 import com.alibaba.android.arouter.utils.Consts;
+import com.alibaba.android.arouter.utils.LogUtils;
 import com.alibaba.android.arouter.utils.MapUtils;
 import com.alibaba.android.arouter.utils.PackageUtils;
 import com.alibaba.android.arouter.utils.TextUtils;
@@ -50,31 +51,47 @@ import static com.alibaba.android.arouter.utils.Consts.TAG;
  * @since 16/8/23 15:02
  */
 public class LogisticsCenter {
+
+
+    //
     private static Context mContext;
+    // 线程池
     static ThreadPoolExecutor executor;
 
     /**
      * LogisticsCenter init, load all metas in memory. Demand initialization
+     * <p>
+     * <p>
+     * 加载生成的类
      */
     public synchronized static void init(Context context, ThreadPoolExecutor tpe) throws HandlerException {
+        LogUtils.e("LogisticsCenter", "init");
+        //
         mContext = context;
+        // 线程池
         executor = tpe;
 
         try {
             long startInit = System.currentTimeMillis();
             Set<String> routerMap;
-
+            // 新版本 或者
             // It will rebuild router map every times when debuggable.
             if (ARouter.debuggable() || PackageUtils.isNewVersion(context)) {
                 logger.info(TAG, "Run with debug mode or new install, rebuild router map.");
                 // These class was generate by arouter-compiler.
+                // 生成文件列表
                 routerMap = ClassUtils.getFileNameByPackageName(mContext, ROUTE_ROOT_PAKCAGE);
+
+                LogUtils.e(TAG, "routerMap: " + routerMap);
+
+                // 数据存储
                 if (!routerMap.isEmpty()) {
                     context.getSharedPreferences(AROUTER_SP_CACHE_KEY, Context.MODE_PRIVATE).edit().putStringSet(AROUTER_SP_KEY_MAP, routerMap).apply();
                 }
-
+                // 存储新的版本号
                 PackageUtils.updateVersion(context);    // Save new version name when router map update finish.
             } else {
+                // 从sp中获取数据
                 logger.info(TAG, "Load router map from cache.");
                 routerMap = new HashSet<>(context.getSharedPreferences(AROUTER_SP_CACHE_KEY, Context.MODE_PRIVATE).getStringSet(AROUTER_SP_KEY_MAP, new HashSet<String>()));
             }
@@ -83,13 +100,18 @@ public class LogisticsCenter {
             startInit = System.currentTimeMillis();
 
             for (String className : routerMap) {
+                // 加载Root
                 if (className.startsWith(ROUTE_ROOT_PAKCAGE + DOT + SDK_NAME + SEPARATOR + SUFFIX_ROOT)) {
                     // This one of root elements, load root.
                     ((IRouteRoot) (Class.forName(className).getConstructor().newInstance())).loadInto(Warehouse.groupsIndex);
-                } else if (className.startsWith(ROUTE_ROOT_PAKCAGE + DOT + SDK_NAME + SEPARATOR + SUFFIX_INTERCEPTORS)) {
+                }
+                // 加载Interceptors
+                else if (className.startsWith(ROUTE_ROOT_PAKCAGE + DOT + SDK_NAME + SEPARATOR + SUFFIX_INTERCEPTORS)) {
                     // Load interceptorMeta
                     ((IInterceptorGroup) (Class.forName(className).getConstructor().newInstance())).loadInto(Warehouse.interceptorsIndex);
-                } else if (className.startsWith(ROUTE_ROOT_PAKCAGE + DOT + SDK_NAME + SEPARATOR + SUFFIX_PROVIDERS)) {
+                }
+                // 加载Providers
+                else if (className.startsWith(ROUTE_ROOT_PAKCAGE + DOT + SDK_NAME + SEPARATOR + SUFFIX_PROVIDERS)) {
                     // Load providerIndex
                     ((IProviderGroup) (Class.forName(className).getConstructor().newInstance())).loadInto(Warehouse.providersIndex);
                 }

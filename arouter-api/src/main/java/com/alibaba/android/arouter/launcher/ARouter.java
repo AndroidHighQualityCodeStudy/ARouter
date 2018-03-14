@@ -9,6 +9,7 @@ import com.alibaba.android.arouter.facade.Postcard;
 import com.alibaba.android.arouter.facade.callback.NavigationCallback;
 import com.alibaba.android.arouter.facade.template.ILogger;
 import com.alibaba.android.arouter.utils.Consts;
+import com.alibaba.android.arouter.utils.LogUtils;
 
 import java.util.concurrent.ThreadPoolExecutor;
 
@@ -33,11 +34,15 @@ public final class ARouter {
 
     /**
      * Init, it must be call before used router.
+     * <p>
+     * 1、一般在Application中完成初始化
      */
     public static void init(Application application) {
+        LogUtils.e("ARouter", "init");
         if (!hasInit) {
+            // 日志
             logger = _ARouter.logger;
-            _ARouter.logger.info(Consts.TAG, "ARouter init start.");
+            // init
             hasInit = _ARouter.init(application);
 
             if (hasInit) {
@@ -51,6 +56,8 @@ public final class ARouter {
     /**
      * Get instance of router. A
      * All feature U use, will be starts here.
+     * <p>
+     * 2、获取单例
      */
     public static ARouter getInstance() {
         if (!hasInit) {
@@ -71,6 +78,9 @@ public final class ARouter {
         _ARouter.openDebug();
     }
 
+    /**
+     * @return
+     */
     public static boolean debuggable() {
         return _ARouter.debuggable();
     }
