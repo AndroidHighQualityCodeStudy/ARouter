@@ -15,10 +15,14 @@ import javax.lang.model.element.Element;
  * @since 16/8/24 09:45
  */
 public class RouteMeta {
+    // 例：RouteType.ACTIVITY
     private RouteType type;         // Type of route
     private Element rawType;        // Raw type of route
+    // 举例：MainActivity.class
     private Class<?> destination;   // Destination
+    // 路径 例："/app/mainactivity"
     private String path;            // Path of route
+    // 分组
     private String group;           // Group of route
     private int priority = -1;      // The smaller the number, the higher the priority
     private int extra;              // Extra data
@@ -44,6 +48,8 @@ public class RouteMeta {
 
     /**
      * For versions of 'compiler' greater than 1.0.7
+     * <p>
+     * 构建一个RouteMeta
      *
      * @param type        type
      * @param destination destination

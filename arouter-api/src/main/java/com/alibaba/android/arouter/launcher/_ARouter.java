@@ -61,6 +61,8 @@ final class _ARouter {
     }
 
     /**
+     * 加载生成的类
+     *
      * @param application
      * @return
      */
@@ -201,10 +203,15 @@ final class _ARouter {
      * Build postcard by path and default group
      */
     protected Postcard build(String path) {
+        LogUtils.e("_ARouter", "---build---");
+        LogUtils.e("_ARouter", "path: " + path);
         if (TextUtils.isEmpty(path)) {
             throw new HandlerException(Consts.TAG + "Parameter is invalid!");
         } else {
+            // navigation(clazz)这种方式是属于根据类型查找，而build(path)是根据名称进行查找
+            // 如果应用中没有实现PathReplaceService这个接口，则pService=null
             PathReplaceService pService = ARouter.getInstance().navigation(PathReplaceService.class);
+            // PathReplaceService可以对所有的路径进行预处理，然后返回一个新的值
             if (null != pService) {
                 path = pService.forString(path);
             }
@@ -229,20 +236,29 @@ final class _ARouter {
 
     /**
      * Build postcard by path and group
+     *
+     * @param path  路径
+     * @param group 分组
+     * @return
      */
     protected Postcard build(String path, String group) {
+        //
         if (TextUtils.isEmpty(path) || TextUtils.isEmpty(group)) {
             throw new HandlerException(Consts.TAG + "Parameter is invalid!");
         } else {
+            //
             PathReplaceService pService = ARouter.getInstance().navigation(PathReplaceService.class);
             if (null != pService) {
                 path = pService.forString(path);
             }
+            // 返回含有path和group组别的Postcard
             return new Postcard(path, group);
         }
     }
 
     /**
+     * 查找其对应的Group
+     * <p>
      * Extract the default group from path.
      */
     private String extractGroup(String path) {
@@ -263,23 +279,41 @@ final class _ARouter {
         }
     }
 
+    /**
+     * afterInit
+     * <p>
+     * 完成类的加载后，由{@link ARouter.init}调用
+     */
     static void afterInit() {
         // Trigger interceptor init, use byName.
-        interceptorService = (InterceptorService) ARouter.getInstance().build("/arouter/service/interceptor").navigation();
+        interceptorService = (InterceptorService) ARouter.getInstance()
+                // 生成一个Postcard对象
+                .build("/arouter/service/interceptor")
+                //这个navigation()经过多次调用之后，
+                //最终调用的是_ARouter.navigation(context, postcard, requestCode, navigationCallback)方法
+                .navigation();
     }
 
     protected <T> T navigation(Class<? extends T> service) {
+        LogUtils.e("_ARouter", "navigation");
         try {
             Postcard postcard = LogisticsCenter.buildProvider(service.getName());
 
             // Compatible 1.0.5 compiler sdk.
             if (null == postcard) { // No service, or this service in old version.
+
+                LogUtils.e("_ARouter", "null == postcard");
                 postcard = LogisticsCenter.buildProvider(service.getSimpleName());
             }
+
+            LogUtils.e("_ARouter", "postcard: " + postcard);
 
             LogisticsCenter.completion(postcard);
             return (T) postcard.getProvider();
         } catch (NoRouteFoundException ex) {
+
+            LogUtils.e("_ARouter", "NoRouteFoundException");
+
             logger.warning(Consts.TAG, ex.getMessage());
             return null;
         }
@@ -295,6 +329,9 @@ final class _ARouter {
      */
     protected Object navigation(final Context context, final Postcard postcard, final int requestCode, final NavigationCallback callback) {
         try {
+            // 重点：分析部分在下面
+            // 1. 将IProvider映射到`Warehouse.providers`中；
+            // 2. 将添加@Route注解的类映射到`Warehouse.routes`中
             LogisticsCenter.completion(postcard);
         } catch (NoRouteFoundException ex) {
             logger.warning(Consts.TAG, ex.getMessage());
@@ -304,7 +341,7 @@ final class _ARouter {
                         " Path = [" + postcard.getPath() + "]\n" +
                         " Group = [" + postcard.getGroup() + "]", Toast.LENGTH_LONG).show();
             }
-
+            // 当无法匹配到对应的对象时，这里可以做降级处理
             if (null != callback) {
                 callback.onLost(postcard);
             } else {    // No callback for this invoke, then we use the global degrade service.
@@ -320,8 +357,10 @@ final class _ARouter {
         if (null != callback) {
             callback.onFound(postcard);
         }
-
+        // 忽略拦截器(在LogisticsCenter.completion(postcard)中，PROVIDER和FRAGMENT是忽略拦截器的)
         if (!postcard.isGreenChannel()) {   // It must be run in async thread, maybe interceptor cost too mush time made ANR.
+
+            // interceptorService对象就是通过_ARouter.afterInit()实例化的;
             interceptorService.doInterceptions(postcard, new InterceptorCallback() {
                 /**
                  * Continue process
@@ -354,18 +393,31 @@ final class _ARouter {
         return null;
     }
 
+    /**
+     * 启动Activity
+     *
+     * @param context
+     * @param postcard
+     * @param requestCode
+     * @param callback
+     * @return
+     */
     private Object _navigation(final Context context, final Postcard postcard, final int requestCode, final NavigationCallback callback) {
+        // 这里如果navigation()不传入Activity作为context，则使用Application作为context
         final Context currentContext = null == context ? mContext : context;
 
         switch (postcard.getType()) {
             case ACTIVITY:
+                // 创建intent
                 // Build intent
                 final Intent intent = new Intent(currentContext, postcard.getDestination());
+                // 获取需要传递的参数
                 intent.putExtras(postcard.getExtras());
 
                 // Set flags.
                 int flags = postcard.getFlags();
                 if (-1 != flags) {
+                    // 例：Intent.FLAG_ACTIVITY_NEW_TASK
                     intent.setFlags(flags);
                 } else if (!(currentContext instanceof Activity)) {    // Non activity, need less one flag.
                     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -375,16 +427,19 @@ final class _ARouter {
                 new Handler(Looper.getMainLooper()).post(new Runnable() {
                     @Override
                     public void run() {
+                        // 启动Activity
                         if (requestCode > 0) {  // Need start for result
                             ActivityCompat.startActivityForResult((Activity) currentContext, intent, requestCode, postcard.getOptionsBundle());
                         } else {
                             ActivityCompat.startActivity(currentContext, intent, postcard.getOptionsBundle());
                         }
 
+                        // Activity动画
                         if ((0 != postcard.getEnterAnim() || 0 != postcard.getExitAnim()) && currentContext instanceof Activity) {    // Old version.
                             ((Activity) currentContext).overridePendingTransition(postcard.getEnterAnim(), postcard.getExitAnim());
                         }
 
+                        // 跳转成功的回调
                         if (null != callback) { // Navigation over.
                             callback.onArrival(postcard);
                         }

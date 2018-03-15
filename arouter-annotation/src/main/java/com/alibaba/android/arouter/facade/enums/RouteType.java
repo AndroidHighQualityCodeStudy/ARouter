@@ -8,6 +8,7 @@ package com.alibaba.android.arouter.facade.enums;
  * @since 16/8/23 22:33
  */
 public enum RouteType {
+
     ACTIVITY(0, "android.app.Activity"),
     SERVICE(1, "android.app.Service"),
     PROVIDER(2, "com.alibaba.android.arouter.facade.template.IProvider"),

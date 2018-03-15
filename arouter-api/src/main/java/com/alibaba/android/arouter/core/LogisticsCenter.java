@@ -2,6 +2,7 @@ package com.alibaba.android.arouter.core;
 
 import android.content.Context;
 import android.net.Uri;
+import android.util.Log;
 
 import com.alibaba.android.arouter.exception.HandlerException;
 import com.alibaba.android.arouter.exception.NoRouteFoundException;
@@ -102,6 +103,7 @@ public class LogisticsCenter {
             for (String className : routerMap) {
                 // 加载Root
                 if (className.startsWith(ROUTE_ROOT_PAKCAGE + DOT + SDK_NAME + SEPARATOR + SUFFIX_ROOT)) {
+                    // new ARouter$$Root$$app().loadInto();
                     // This one of root elements, load root.
                     ((IRouteRoot) (Class.forName(className).getConstructor().newInstance())).loadInto(Warehouse.groupsIndex);
                 }
@@ -112,6 +114,7 @@ public class LogisticsCenter {
                 }
                 // 加载Providers
                 else if (className.startsWith(ROUTE_ROOT_PAKCAGE + DOT + SDK_NAME + SEPARATOR + SUFFIX_PROVIDERS)) {
+                    // new ARouter$$Providers$$app().loadInto();
                     // Load providerIndex
                     ((IProviderGroup) (Class.forName(className).getConstructor().newInstance())).loadInto(Warehouse.providersIndex);
                 }
@@ -133,32 +136,47 @@ public class LogisticsCenter {
 
     /**
      * Build postcard by serviceName
+     * <p>
+     * 生成一个Postcard对象
      *
      * @param serviceName interfaceName
      * @return postcard
      */
     public static Postcard buildProvider(String serviceName) {
+        LogUtils.e("LogisticsCenter: ", "buildProvider");
+        LogUtils.e("LogisticsCenter: ", "serviceName: " + serviceName);
         RouteMeta meta = Warehouse.providersIndex.get(serviceName);
-
+        LogUtils.e("LogisticsCenter: ", "meta: " + meta);
         if (null == meta) {
             return null;
         } else {
-            return new Postcard(meta.getPath(), meta.getGroup());
+            Postcard postcard = new Postcard(meta.getPath(), meta.getGroup());
+            LogUtils.e("LogisticsCenter: ", "postcard: " + postcard);
+            return postcard;
         }
     }
 
     /**
      * Completion the postcard by route metas
+     * <p>
+     * 加载用到的组内数据
      *
      * @param postcard Incomplete postcard, should completion by this method.
      */
     public synchronized static void completion(Postcard postcard) {
+        LogUtils.e("_ARouter", "completion");
+        LogUtils.e("_ARouter", "postcard: " + postcard);
         if (null == postcard) {
+            LogUtils.e("_ARouter", "NoRouteFoundException");
             throw new NoRouteFoundException(TAG + "No postcard!");
         }
-
+        // 查找对应的打开文件
         RouteMeta routeMeta = Warehouse.routes.get(postcard.getPath());
-        if (null == routeMeta) {    // Maybe its does't exist, or didn't load.
+        if (null == routeMeta) {
+            LogUtils.e("_ARouter", "null == routeMeta");
+            /**
+             * 加载对应的组内数据
+             */
             Class<? extends IRouteGroup> groupMeta = Warehouse.groupsIndex.get(postcard.getGroup());  // Load route meta.
             if (null == groupMeta) {
                 throw new NoRouteFoundException(TAG + "There is no route match the path [" + postcard.getPath() + "], in group [" + postcard.getGroup() + "]");
@@ -168,9 +186,18 @@ public class LogisticsCenter {
                     if (ARouter.debuggable()) {
                         logger.debug(TAG, String.format(Locale.getDefault(), "The group [%s] starts loading, trigger by [%s]", postcard.getGroup(), postcard.getPath()));
                     }
-
+                    /**
+                     * 加载组内的Activity
+                     *
+                     * atlas.put("/app/ImageActivity", RouteMeta.build(RouteType.ACTIVITY, ImageActivity.class, "/app/imageactivity", "app", null, -1, -2147483648));
+                     * atlas.put("/app/MainActivity", RouteMeta.build(RouteType.ACTIVITY, MainActivity.class, "/app/mainactivity", "app", null, -1, -2147483648));
+                     * atlas.put("/app/TextActivity", RouteMeta.build(RouteType.ACTIVITY, TextActivity.class, "/app/textactivity", "app", null, -1, -2147483648));
+                     */
                     IRouteGroup iGroupInstance = groupMeta.getConstructor().newInstance();
+                    // 将我们添加@Route注解的类映射到Warehouse.routes中；
                     iGroupInstance.loadInto(Warehouse.routes);
+
+                    // 将已经加载过的组从Warehouse.groupsIndex中移除，避免重复添加进Warehouse.routes
                     Warehouse.groupsIndex.remove(postcard.getGroup());
 
                     if (ARouter.debuggable()) {
@@ -179,10 +206,11 @@ public class LogisticsCenter {
                 } catch (Exception e) {
                     throw new HandlerException(TAG + "Fatal exception when loading group meta. [" + e.getMessage() + "]");
                 }
-
+                // 这个时候Warehouse.routes已经有值了，所以重新调用本方法执行else代码块
                 completion(postcard);   // Reload
             }
         } else {
+            // 给postcard赋值
             postcard.setDestination(routeMeta.getDestination());
             postcard.setType(routeMeta.getType());
             postcard.setPriority(routeMeta.getPriority());
@@ -226,10 +254,13 @@ public class LogisticsCenter {
                             throw new HandlerException("Init provider failed! " + e.getMessage());
                         }
                     }
+                    // 将IProvider的实现类保存在postcard中，因此可以从postcard获取IProvider的实例对象；
                     postcard.setProvider(instance);
+                    // greenChannel()会忽略拦截器
                     postcard.greenChannel();    // Provider should skip all of interceptors
                     break;
                 case FRAGMENT:
+                    // greenChannel()会忽略拦截器
                     postcard.greenChannel();    // Fragment needn't interceptors
                 default:
                     break;

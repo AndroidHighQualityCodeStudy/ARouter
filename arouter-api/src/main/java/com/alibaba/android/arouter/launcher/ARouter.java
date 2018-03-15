@@ -42,9 +42,9 @@ public final class ARouter {
         if (!hasInit) {
             // 日志
             logger = _ARouter.logger;
-            // init
+            // 加载生成的类
             hasInit = _ARouter.init(application);
-
+            //
             if (hasInit) {
                 _ARouter.afterInit();
             }
@@ -147,6 +147,9 @@ public final class ARouter {
      * @param path Where you go.
      */
     public Postcard build(String path) {
+        LogUtils.e("ARouter", "---build---");
+        LogUtils.e("ARouter", "path: " + path);
+        //
         return _ARouter.getInstance().build(path);
     }
 
@@ -178,6 +181,7 @@ public final class ARouter {
      * @return instance of service
      */
     public <T> T navigation(Class<? extends T> service) {
+        LogUtils.e("ARouter", "navigation");
         return _ARouter.getInstance().navigation(service);
     }
 

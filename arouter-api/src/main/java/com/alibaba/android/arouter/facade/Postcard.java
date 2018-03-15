@@ -34,7 +34,9 @@ public final class Postcard extends RouteMeta {
     // Base
     private Uri uri;
     private Object tag;             // A tag prepare for some thing wrong.
+    // 需要传递的参数
     private Bundle mBundle;         // Data to transform
+    // 例：Intent.FLAG_ACTIVITY_NEW_TASK
     private int flags = -1;         // Flags of route
     private int timeout = 300;      // Navigation timeout, TimeUnit.Second
     private IProvider provider;     // It will be set value, if this postcard was provider.
@@ -43,7 +45,11 @@ public final class Postcard extends RouteMeta {
 
     // Animation
     private Bundle optionsCompat;    // The transition animation of activity
+
+
+    // 进入动画
     private int enterAnim;
+    // 退出动画
     private int exitAnim;
 
     public Bundle getOptionsBundle() {
@@ -95,6 +101,11 @@ public final class Postcard extends RouteMeta {
         return this;
     }
 
+    /**
+     * 获取需要传递的参数
+     *
+     * @return
+     */
     public Bundle getExtras() {
         return mBundle;
     }
@@ -228,6 +239,11 @@ public final class Postcard extends RouteMeta {
         return this;
     }
 
+    /**
+     * 获取flag 例： Intent.FLAG_ACTIVITY_NEW_TASK
+     *
+     * @return
+     */
     public int getFlags() {
         return flags;
     }
