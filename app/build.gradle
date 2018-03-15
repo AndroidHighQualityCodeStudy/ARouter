@@ -53,6 +53,8 @@ dependencies {
 
     annotationProcessor project(':arouter-compiler')
     compile project(':arouter-api')
+    compile project(':module-java')
+    compile project(':module-kotlin')
     compile project(':arouter-annotation')
 
     compile 'com.alibaba:fastjson:1.2.9'
