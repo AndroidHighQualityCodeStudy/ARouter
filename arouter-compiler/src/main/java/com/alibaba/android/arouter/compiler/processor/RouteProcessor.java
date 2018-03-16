@@ -159,22 +159,27 @@ public class RouteProcessor extends AbstractProcessor {
         // Generate class.
         // Filter用来创建新的源文件，class文件以及辅助文件
         mFiler = processingEnv.getFiler();
-        // Get type utils.
-        types = processingEnv.getTypeUtils();
+
 
         // Get class meta.
         // Elements 中包含用于操作Element的工具方法
         elements = processingEnv.getElementUtils();
-
+        // Get type utils.
+        types = processingEnv.getTypeUtils();
+        // 判断Element类型
         typeUtils = new TypeUtils(types, elements);
+
         // Messager用来报告错误，警告和其他提示信息
         logger = new Logger(processingEnv.getMessager());   // Package the log utils.
 
         // Attempt to get user configuration [moduleName]
         Map<String, String> options = processingEnv.getOptions();
+
+        logger.info("RouteProcessor options: " + options);
         if (MapUtils.isNotEmpty(options)) {
             moduleName = options.get(KEY_MODULE_NAME);
         }
+        logger.info("RouteProcessor moduleName: " + moduleName);
 
         if (StringUtils.isNotEmpty(moduleName)) {
             moduleName = moduleName.replaceAll("[^0-9a-zA-Z_]+", "");
@@ -203,6 +208,7 @@ public class RouteProcessor extends AbstractProcessor {
      */
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+        logger.info("RouteProcessor process");
         if (CollectionUtils.isNotEmpty(annotations)) {
             Set<? extends Element> routeElements = roundEnv.getElementsAnnotatedWith(Route.class);
             try {
@@ -218,7 +224,12 @@ public class RouteProcessor extends AbstractProcessor {
         return false;
     }
 
+    /**
+     * @param routeElements
+     * @throws IOException
+     */
     private void parseRoutes(Set<? extends Element> routeElements) throws IOException {
+        logger.info("RouteProcessor parseRoutes");
         if (CollectionUtils.isNotEmpty(routeElements)) {
             // Perpare the type an so on.
 
@@ -226,21 +237,28 @@ public class RouteProcessor extends AbstractProcessor {
 
             rootMap.clear();
 
+            // android.app.Activity
             TypeMirror type_Activity = elements.getTypeElement(ACTIVITY).asType();
+            // android.app.Service
             TypeMirror type_Service = elements.getTypeElement(SERVICE).asType();
+            // android.app.Fragment
             TypeMirror fragmentTm = elements.getTypeElement(FRAGMENT).asType();
+            // android.support.v4.app.Fragment
             TypeMirror fragmentTmV4 = elements.getTypeElement(Consts.FRAGMENT_V4).asType();
 
             // Interface of ARouter
+            // IRouteGroup
             TypeElement type_IRouteGroup = elements.getTypeElement(IROUTE_GROUP);
+            // IProviderGroup
             TypeElement type_IProviderGroup = elements.getTypeElement(IPROVIDER_GROUP);
+            // RouteMeta
             ClassName routeMetaCn = ClassName.get(RouteMeta.class);
+            // RouteType
             ClassName routeTypeCn = ClassName.get(RouteType.class);
 
             /*
-               Build input type, format as :
-
-               ```Map<String, Class<? extends IRouteGroup>>```
+             * Build input type, format as :
+             * ```Map<String, Class<? extends IRouteGroup>>```
              */
             ParameterizedTypeName inputMapTypeOfRoot = ParameterizedTypeName.get(
                     ClassName.get(Map.class),
@@ -252,8 +270,7 @@ public class RouteProcessor extends AbstractProcessor {
             );
 
             /*
-
-              ```Map<String, RouteMeta>```
+             *```Map<String, RouteMeta>```
              */
             ParameterizedTypeName inputMapTypeOfGroup = ParameterizedTypeName.get(
                     ClassName.get(Map.class),
