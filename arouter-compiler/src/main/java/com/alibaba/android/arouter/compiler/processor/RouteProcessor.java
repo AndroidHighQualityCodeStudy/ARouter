@@ -237,6 +237,7 @@ public class RouteProcessor extends AbstractProcessor {
 
             rootMap.clear();
 
+            // 获取ACTIVITY, SERVICE, FRAGMENT, FRAGMENT_V4 这四种 类型镜像
             // android.app.Activity
             TypeMirror type_Activity = elements.getTypeElement(ACTIVITY).asType();
             // android.app.Service
@@ -246,17 +247,34 @@ public class RouteProcessor extends AbstractProcessor {
             // android.support.v4.app.Fragment
             TypeMirror fragmentTmV4 = elements.getTypeElement(Consts.FRAGMENT_V4).asType();
 
+            // ARouter的接口
             // Interface of ARouter
             // IRouteGroup
             TypeElement type_IRouteGroup = elements.getTypeElement(IROUTE_GROUP);
             // IProviderGroup
             TypeElement type_IProviderGroup = elements.getTypeElement(IPROVIDER_GROUP);
+
+            // 下面就是遍历获取的注解信息，通过javapoet来生成类文件了
             // RouteMeta
             ClassName routeMetaCn = ClassName.get(RouteMeta.class);
             // RouteType
             ClassName routeTypeCn = ClassName.get(RouteType.class);
 
-            /*
+            /**
+             *
+             * public class ARouter$$Root$$app implements IRouteRoot {
+             * @Override
+             * public void loadInto(Map<String, Class<? extends IRouteGroup>> routes) {
+             * routes.put("service", ARouter$$Group$$service.class);
+             * routes.put("test", ARouter$$Group$$test.class);
+             * }
+             * }
+             *
+             */
+
+            /**
+             * ParameterizedTypeName用来创建类型对象，例如下面
+             *
              * Build input type, format as :
              * ```Map<String, Class<? extends IRouteGroup>>```
              */
@@ -269,7 +287,22 @@ public class RouteProcessor extends AbstractProcessor {
                     )
             );
 
-            /*
+
+            /**
+             *
+             * public class ARouter$$Group$$test implements IRouteGroup {
+             * @Override public void loadInto(Map<String, RouteMeta> atlas) {
+             * atlas.put("/test/activity1", RouteMeta.build(RouteType.ACTIVITY, Test1Activity.class, "/test/activity1", "test", new java.util.HashMap<String, Integer>(){{put("pac", 9); put("ch", 5); put("fl", 6); put("obj", 10); put("name", 8); put("dou", 7); put("boy", 0); put("objList", 10); put("map", 10); put("age", 3); put("url", 8); put("height", 3); }}, -1, -2147483648));
+             * atlas.put("/test/activity2", RouteMeta.build(RouteType.ACTIVITY, Test2Activity.class, "/test/activity2", "test", new java.util.HashMap<String, Integer>(){{put("key1", 8); }}, -1, -2147483648));
+             * }
+             * }
+             *
+             *
+             */
+
+            /**
+             * RouteMeta封装了路由相关的信息
+             *
              *```Map<String, RouteMeta>```
              */
             ParameterizedTypeName inputMapTypeOfGroup = ParameterizedTypeName.get(
@@ -281,79 +314,159 @@ public class RouteProcessor extends AbstractProcessor {
             /*
               Build input param name.
              */
+            // 1、生成的参数：Map<String, Class<? extends IRouteGroup>> routes
             ParameterSpec rootParamSpec = ParameterSpec.builder(inputMapTypeOfRoot, "routes").build();
+            // 2、 Map<String, RouteMeta> atlas
             ParameterSpec groupParamSpec = ParameterSpec.builder(inputMapTypeOfGroup, "atlas").build();
+            // 3、Map<String, RouteMeta> providers
             ParameterSpec providerParamSpec = ParameterSpec.builder(inputMapTypeOfGroup, "providers").build();  // Ps. its param type same as groupParamSpec!
 
-            /*
-              Build method : 'loadInto'
+            /**
+             * Build method : 'loadInto'
+             *
+             * @Override
+             * public void loadInto(Map<String, Class<? extends IRouteGroup>> routes)
              */
             MethodSpec.Builder loadIntoMethodOfRootBuilder = MethodSpec.methodBuilder(METHOD_LOAD_INTO)
                     .addAnnotation(Override.class)
                     .addModifiers(PUBLIC)
                     .addParameter(rootParamSpec);
 
+            logger.info("RouteProcessor routeElements.size() " + routeElements.size());
+
+            // 接下来的代码就是遍历注解元素，进行分组，进而生成java文件
             //  Follow a sequence, find out metas of group first, generate java file, then statistics them as root.
             for (Element element : routeElements) {
+
+                logger.info("element " + element.getSimpleName());
+
+                // TypeMirror代表java语言中的类型
                 TypeMirror tm = element.asType();
+                //
                 Route route = element.getAnnotation(Route.class);
+                //
                 RouteMeta routeMete = null;
 
+                // 判断类型 Activity
                 if (types.isSubtype(tm, type_Activity)) {                 // Activity
                     logger.info(">>> Found activity route: " + tm.toString() + " <<<");
 
+                    // 遍历查找所有添加 @AutoWired 注解的变量
                     // Get all fields annotation by @Autowired
                     Map<String, Integer> paramsType = new HashMap<>();
+                    //
                     for (Element field : element.getEnclosedElements()) {
-                        if (field.getKind().isField() && field.getAnnotation(Autowired.class) != null && !types.isSubtype(field.asType(), iProvider)) {
+                        // 参数 自动装填
+                        // 1. 必须是field
+                        // 2. 必须有注解AutoWired
+                        // 3. 必须不是IProvider类型
+                        if (field.getKind().isField()
+                                && field.getAnnotation(Autowired.class) != null
+                                && !types.isSubtype(field.asType(), iProvider)) {
+
+                            logger.info("Autowired field " + field.getSimpleName());
+
+                            // 满足上述条件后，获取注解
                             // It must be field, then it has annotation, but it not be provider.
                             Autowired paramConfig = field.getAnnotation(Autowired.class);
-                            paramsType.put(StringUtils.isEmpty(paramConfig.name()) ? field.getSimpleName().toString() : paramConfig.name(), typeUtils.typeExchange(field));
+
+                            // Autowired支持写别名，当指定name属性之后，就会以name为准，否则以field的名字为准。
+                            // TypeUtils是自定义工具类，用来判断field的数据类型的，转换成int值。
+                            paramsType.put(
+                                    StringUtils.isEmpty(paramConfig.name())
+                                            ? field.getSimpleName().toString()
+                                            : paramConfig.name()
+                                    , typeUtils.typeExchange(field));
                         }
                     }
+
+                    logger.info("Autowired route.group " + route.group());
+                    logger.info("Autowired route.name " + route.name());
+                    logger.info("Autowired route.path " + route.path());
+                    logger.info("Autowired route.extras " + route.extras());
+
+                    logger.info("element " + element.getSimpleName());
+
+                    logger.info("paramsType " + paramsType);
+
+                    /**
+                     * route: /test/activity1
+                     * element: Test1Activity
+                     * ACTIVITY(0, "android.app.Activity")
+                     * paramsType 参数  参数对应类型int
+                     */
                     routeMete = new RouteMeta(route, element, RouteType.ACTIVITY, paramsType);
-                } else if (types.isSubtype(tm, iProvider)) {         // IProvider
+                }
+                // 如果是IProvider类型的注解，则直接创建一条PROVIDER类型的路由信息
+                else if (types.isSubtype(tm, iProvider)) {         // IProvider
                     logger.info(">>> Found provider route: " + tm.toString() + " <<<");
                     routeMete = new RouteMeta(route, element, RouteType.PROVIDER, null);
-                } else if (types.isSubtype(tm, type_Service)) {           // Service
+                }
+                // 如果是Service类型的注解，则直接创建一条Service类型的路由信息
+                else if (types.isSubtype(tm, type_Service)) {           // Service
                     logger.info(">>> Found service route: " + tm.toString() + " <<<");
                     routeMete = new RouteMeta(route, element, RouteType.parse(SERVICE), null);
-                } else if (types.isSubtype(tm, fragmentTm) || types.isSubtype(tm, fragmentTmV4)) {
+                }
+                // 如果是fragmentTmV4类型的注解，则直接创建一条Fragment类型的路由信息
+                else if (types.isSubtype(tm, fragmentTm) || types.isSubtype(tm, fragmentTmV4)) {
                     logger.info(">>> Found fragment route: " + tm.toString() + " <<<");
                     routeMete = new RouteMeta(route, element, RouteType.parse(FRAGMENT), null);
                 } else {
                     throw new RuntimeException("ARouter::Compiler >>> Found unsupported class type, type = [" + types.toString() + "].");
                 }
-
+                // 将路由信息进行分组，分组信息保存到 groupMap中
                 categories(routeMete);
-                // if (StringUtils.isEmpty(moduleName)) {   // Hasn't generate the module name.
-                //     moduleName = ModuleUtils.generateModuleName(element, logger);
-                // }
+
             }
 
+            /**
+             * @Override
+             * public void loadInto(Map<String, RouteMeta> providers)
+             */
             MethodSpec.Builder loadIntoMethodOfProviderBuilder = MethodSpec.methodBuilder(METHOD_LOAD_INTO)
                     .addAnnotation(Override.class)
                     .addModifiers(PUBLIC)
                     .addParameter(providerParamSpec);
 
+            // 遍历 groupMap
+            //
             // Start generate java source, structure is divided into upper and lower levels, used for demand initialization.
             for (Map.Entry<String, Set<RouteMeta>> entry : groupMap.entrySet()) {
+
+                // 组名称
                 String groupName = entry.getKey();
 
+                /**
+                 * @Override
+                 * public void loadInto(Map<String, RouteMeta> atlas)
+                 */
                 MethodSpec.Builder loadIntoMethodOfGroupBuilder = MethodSpec.methodBuilder(METHOD_LOAD_INTO)
                         .addAnnotation(Override.class)
                         .addModifiers(PUBLIC)
                         .addParameter(groupParamSpec);
 
+                // 构建loadInto方法的方法体
                 // Build group method body
                 Set<RouteMeta> groupData = entry.getValue();
+                // 循环
                 for (RouteMeta routeMeta : groupData) {
+                    // 类型
                     switch (routeMeta.getType()) {
-                        case PROVIDER:  // Need cache provider's super class
+                        // PROVIDER(2, "com.alibaba.android.arouter.facade.template.IProvider")
+                        case PROVIDER:// Need cache provider's super class
+                            //
                             List<? extends TypeMirror> interfaces = ((TypeElement) routeMeta.getRawType()).getInterfaces();
+                            // 遍历当前类的接口
                             for (TypeMirror tm : interfaces) {
+                                // 如果当前类直接实现了IProvider接口
                                 if (types.isSameType(tm, iProvider)) {   // Its implements iProvider interface himself.
                                     // This interface extend the IProvider, so it can be used for mark provider
+                                    /**
+                                     * @Route(path = "/service/single")
+                                     * public class SingleService implements IProvider
+                                     *
+                                     * providers.put("com.alibaba.android.arouter.demo.testservice.SingleService", RouteMeta.build(RouteType.PROVIDER, SingleService.class, "/service/single", "service", null, -1, -2147483648));
+                                     */
                                     loadIntoMethodOfProviderBuilder.addStatement(
                                             "providers.put($S, $T.build($T." + routeMeta.getType() + ", $T.class, $S, $S, null, " + routeMeta.getPriority() + ", " + routeMeta.getExtra() + "))",
                                             (routeMeta.getRawType()).toString(),
@@ -362,7 +475,16 @@ public class RouteProcessor extends AbstractProcessor {
                                             ClassName.get((TypeElement) routeMeta.getRawType()),
                                             routeMeta.getPath(),
                                             routeMeta.getGroup());
-                                } else if (types.isSubtype(tm, iProvider)) {
+                                }
+                                // 如果是接口继承的IProvider
+                                else if (types.isSubtype(tm, iProvider)) {
+                                    /**
+                                     * @Route(path = "/service/hello")
+                                     * public class HelloServiceImpl implements HelloService
+                                     * public interface HelloService extends IProvider
+                                     * //
+                                     * providers.put("com.alibaba.android.arouter.demo.testservice.HelloService", RouteMeta.build(RouteType.PROVIDER, HelloServiceImpl.class, "/service/hello", "service", null, -1, -2147483648));
+                                     */
                                     // This interface extend the IProvider, so it can be used for mark provider
                                     loadIntoMethodOfProviderBuilder.addStatement(
                                             "providers.put($S, $T.build($T." + routeMeta.getType() + ", $T.class, $S, $S, null, " + routeMeta.getPriority() + ", " + routeMeta.getExtra() + "))",
@@ -379,6 +501,7 @@ public class RouteProcessor extends AbstractProcessor {
                             break;
                     }
 
+                    // 形式如： put("pac", 9); put("obj", 10);
                     // Make map body for paramsType
                     StringBuilder mapBodyBuilder = new StringBuilder();
                     Map<String, Integer> paramsType = routeMeta.getParamsType();
@@ -389,6 +512,9 @@ public class RouteProcessor extends AbstractProcessor {
                     }
                     String mapBody = mapBodyBuilder.toString();
 
+                    /**
+                     * atlas.put("/test/activity1", RouteMeta.build(RouteType.ACTIVITY, Test1Activity.class, "/test/activity1", "test", new java.util.HashMap<String, Integer>(){{put("pac", 9); put("ch", 5); put("fl", 6); put("obj", 10); put("name", 8); put("dou", 7); put("boy", 0); put("objList", 10); put("map", 10); put("age", 3); put("url", 8); put("height", 3); }}, -1, -2147483648));
+                     */
                     loadIntoMethodOfGroupBuilder.addStatement(
                             "atlas.put($S, $T.build($T." + routeMeta.getType() + ", $T.class, $S, $S, " + (StringUtils.isEmpty(mapBody) ? null : ("new java.util.HashMap<String, Integer>(){{" + mapBodyBuilder.toString() + "}}")) + ", " + routeMeta.getPriority() + ", " + routeMeta.getExtra() + "))",
                             routeMeta.getPath(),
@@ -401,11 +527,19 @@ public class RouteProcessor extends AbstractProcessor {
 
                 // Generate groups
                 String groupFileName = NAME_OF_GROUP + groupName;
-                JavaFile.builder(PACKAGE_OF_GENERATE_FILE,
+                //
+                JavaFile.builder(
+                        // package 名称 --"com.alibaba.android.arouter.routes"
+                        PACKAGE_OF_GENERATE_FILE,
+                        //java类名
                         TypeSpec.classBuilder(groupFileName)
+                                // doc
                                 .addJavadoc(WARNING_TIPS)
+                                // 添加继承的接口
                                 .addSuperinterface(ClassName.get(type_IRouteGroup))
+                                //　作用域为public
                                 .addModifiers(PUBLIC)
+                                // 添加函数（包括了函数里面的代码块）
                                 .addMethod(loadIntoMethodOfGroupBuilder.build())
                                 .build()
                 ).build().writeTo(mFiler);
@@ -453,15 +587,24 @@ public class RouteProcessor extends AbstractProcessor {
 
     /**
      * Sort metas in group.
+     * <p>
+     * 将路由信息进行分组，分组信息保存到 groupMap中
+     * <p>
+     * （每个路由信息对象中都保存着它所属的组别信息，在调用categories()函数之前所有的组别信息都是默认值"" ）
      *
      * @param routeMete metas.
      */
     private void categories(RouteMeta routeMete) {
         logger.info("---categories---");
+        // 1、验证路由信息的正确性
+        // 2、截取路径字符串 获取group
         if (routeVerify(routeMete)) {
             logger.info(">>> Start categories, group = " + routeMete.getGroup() + ", path = " + routeMete.getPath() + " <<<");
+            // 尝试从groupMap中通过group名称 获取集合数据
             Set<RouteMeta> routeMetas = groupMap.get(routeMete.getGroup());
+            // 集合数据为空
             if (CollectionUtils.isEmpty(routeMetas)) {
+                // 创建组
                 Set<RouteMeta> routeMetaSet = new TreeSet<>(new Comparator<RouteMeta>() {
                     @Override
                     public int compare(RouteMeta r1, RouteMeta r2) {
@@ -473,13 +616,15 @@ public class RouteProcessor extends AbstractProcessor {
                         }
                     }
                 });
+                // 添加到新创建的集合中
                 routeMetaSet.add(routeMete);
+                // 集合添加到groupMap中
+                groupMap.put(routeMete.getGroup(), routeMetaSet);
 
                 logger.info("routeMete: " + routeMete);
                 logger.info("routeMete.getGroup(): " + routeMete.getGroup());
-
-                groupMap.put(routeMete.getGroup(), routeMetaSet);
             } else {
+                // 添加到组中
                 routeMetas.add(routeMete);
             }
         } else {
@@ -488,6 +633,9 @@ public class RouteProcessor extends AbstractProcessor {
     }
 
     /**
+     * 1、验证路由信息的正确性
+     * 2、截取路径字符串 获取group
+     * <p>
      * Verify the route meta
      *
      * @param meta raw meta
@@ -495,12 +643,14 @@ public class RouteProcessor extends AbstractProcessor {
     private boolean routeVerify(RouteMeta meta) {
         String path = meta.getPath();
 
+        // 合法性判断
         if (StringUtils.isEmpty(path) || !path.startsWith("/")) {   // The path must be start with '/' and not empty!
             return false;
         }
-
+        // 没有分组时，group为""
         if (StringUtils.isEmpty(meta.getGroup())) { // Use default group(the first word in path)
             try {
+                // 截取路径字符串 获取group
                 String defaultGroup = path.substring(1, path.indexOf("/", 1));
                 if (StringUtils.isEmpty(defaultGroup)) {
                     return false;
