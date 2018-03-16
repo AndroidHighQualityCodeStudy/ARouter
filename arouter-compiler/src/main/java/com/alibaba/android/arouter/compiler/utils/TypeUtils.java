@@ -19,6 +19,8 @@ import static com.alibaba.android.arouter.compiler.utils.Consts.STRING;
 
 /**
  * Utils for type exchange
+ * <p>
+ * 判断Element类型
  *
  * @author zhilong <a href="mailto:zhilong.lzl@alibaba-inc.com">Contact me.</a>
  * @version 1.0
@@ -26,18 +28,23 @@ import static com.alibaba.android.arouter.compiler.utils.Consts.STRING;
  */
 public class TypeUtils {
 
-    private Types types;
+    //
     private Elements elements;
+    //
+    private Types types;
+    //
     private TypeMirror parcelableType;
 
     public TypeUtils(Types types, Elements elements) {
         this.types = types;
         this.elements = elements;
-
+        //
         parcelableType = this.elements.getTypeElement(PARCELABLE).asType();
     }
 
     /**
+     * 判断Element类型
+     * <p>
      * Diagnostics out the true java type
      *
      * @param element Raw type

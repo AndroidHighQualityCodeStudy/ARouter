@@ -69,20 +69,78 @@ import static javax.lang.model.element.Modifier.PUBLIC;
  * @version 1.0
  * @since 16/8/15 下午10:08
  */
+// 主要的作用是注解 processor 类，并对其生成 META-INF 的配置信息。
 @AutoService(Processor.class)
+// ??????????????
+// 这个注解用来注册可能通过命令行传递给处理器的操作选项
 @SupportedOptions(KEY_MODULE_NAME)
+// 标识该处理器支持的源码版本
 @SupportedSourceVersion(SourceVersion.RELEASE_7)
+
+// 这个 Processor 要处理的 Annotation 名字
+// com.alibaba.android.arouter.facade.annotation.Route
+// com.alibaba.android.arouter.facade.annotation.Autowired
 @SupportedAnnotationTypes({ANNOTATION_TYPE_ROUTE, ANNOTATION_TYPE_AUTOWIRED})
 public class RouteProcessor extends AbstractProcessor {
-    private Map<String, Set<RouteMeta>> groupMap = new HashMap<>(); // ModuleName and routeMeta.
-    private Map<String, String> rootMap = new TreeMap<>();  // Map of root metas, used for generate class file in order.
+
+    // Filter用来创建新的源文件，class文件以及辅助文件
     private Filer mFiler;       // File util, write class file into disk.
-    private Logger logger;
-    private Types types;
+
+    /**
+     * 参考：
+     * http://blog.csdn.net/dd864140130/article/details/53875814
+     * <p>
+     * Elements 中包含用于操作Element的工具方法
+     * element表示一个静态的，语言级别的构件。
+     * 而任何一个结构化文档都可以看作是由不同的element组成的结构体，比如XML，JSON等。
+     * 对于java源文件来说，他同样是一种结构化文档：
+     * package com.closedevice;             //PackageElement
+     * public class Main{                   //TypeElement
+     * private int x;                       //VariableElement
+     * private Main(){                      //ExecuteableElement
+     * }
+     * private void print(String msg){      //其中的参数部分String msg为TypeElement
+     * }
+     * }
+     */
     private Elements elements;
-    private TypeUtils typeUtils;
-    private String moduleName = null;   // Module name, maybe its 'app' or others
+    // Types中包含用于操作TypeMirror的工具方法
+    private Types types;
+    // TypeMirror代表java语言中的类型.
+    // Types包括基本类型，声明类型（类类型和接口类型），数组，类型变量和空类型。也代表通配类型参数，可执行文件的签名和返回类型等。
+    // TypeMirror类中最重要的是getKind()方法，该方法返回TypeKind类型，为了方便大家理解
+    // Element代表源代码，TypeElement代表的是源码中的类型元素，比如类。
+    // 虽然我们可以从TypeElement中获取类名，TypeElement中不包含类本身的信息，
+    // 比如它的父类，要想获取这信息需要借助TypeMirror，可以通过Element中的asType()获取元素对应的TypeMirror
     private TypeMirror iProvider = null;
+
+    // 判断Element类型
+    private TypeUtils typeUtils;
+
+
+    //
+    // ModuleName and routeMeta.
+    // 例：
+    // group='test'
+    // {type=FRAGMENT,
+    // rawType=com.alibaba.android.arouter.demo.BlankFragment,
+    // destination=null,
+    // path='/test/fragment',
+    // group='test',
+    // priority=-1,
+    // extra=-2147483648}
+    private Map<String, Set<RouteMeta>> groupMap = new HashMap<>();
+    // 例：
+    // group: test
+    // group: ARouter$$Group$$test
+    private Map<String, String> rootMap = new TreeMap<>();  // Map of root metas, used for generate class file in order.
+
+    private String moduleName = null;   // Module name, maybe its 'app' or others
+
+
+    // 日志封装
+    // 通过Messager来报告错误，警告和其他提示信息
+    private Logger logger;
 
     /**
      * Initializes the processor with the processing environment by
@@ -98,12 +156,18 @@ public class RouteProcessor extends AbstractProcessor {
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
+        // Generate class.
+        // Filter用来创建新的源文件，class文件以及辅助文件
+        mFiler = processingEnv.getFiler();
+        // Get type utils.
+        types = processingEnv.getTypeUtils();
 
-        mFiler = processingEnv.getFiler();                  // Generate class.
-        types = processingEnv.getTypeUtils();            // Get type utils.
-        elements = processingEnv.getElementUtils();      // Get class meta.
+        // Get class meta.
+        // Elements 中包含用于操作Element的工具方法
+        elements = processingEnv.getElementUtils();
 
         typeUtils = new TypeUtils(types, elements);
+        // Messager用来报告错误，警告和其他提示信息
         logger = new Logger(processingEnv.getMessager());   // Package the log utils.
 
         // Attempt to get user configuration [moduleName]
@@ -329,7 +393,9 @@ public class RouteProcessor extends AbstractProcessor {
                                 .build()
                 ).build().writeTo(mFiler);
 
+                logger.info("---rootMap---");
                 logger.info(">>> Generated group: " + groupName + "<<<");
+                logger.info(">>> Generated group: " + groupFileName + "<<<");
                 rootMap.put(groupName, groupFileName);
             }
 
@@ -374,6 +440,7 @@ public class RouteProcessor extends AbstractProcessor {
      * @param routeMete metas.
      */
     private void categories(RouteMeta routeMete) {
+        logger.info("---categories---");
         if (routeVerify(routeMete)) {
             logger.info(">>> Start categories, group = " + routeMete.getGroup() + ", path = " + routeMete.getPath() + " <<<");
             Set<RouteMeta> routeMetas = groupMap.get(routeMete.getGroup());
@@ -390,6 +457,10 @@ public class RouteProcessor extends AbstractProcessor {
                     }
                 });
                 routeMetaSet.add(routeMete);
+
+                logger.info("routeMete: " + routeMete);
+                logger.info("routeMete.getGroup(): " + routeMete.getGroup());
+
                 groupMap.put(routeMete.getGroup(), routeMetaSet);
             } else {
                 routeMetas.add(routeMete);
