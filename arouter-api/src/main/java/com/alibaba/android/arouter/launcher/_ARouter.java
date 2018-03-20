@@ -51,7 +51,7 @@ final class _ARouter {
     private volatile static boolean autoInject = false;
     private volatile static _ARouter instance = null;
     private volatile static boolean hasInit = false;
-    // 线程池
+    // 线程池 cpu + 1
     private volatile static ThreadPoolExecutor executor = DefaultPoolExecutor.getInstance();
     private static Context mContext;
 
@@ -61,7 +61,7 @@ final class _ARouter {
     }
 
     /**
-     * 加载生成的类
+     * 加载build下生成的类
      *
      * @param application
      * @return
@@ -201,6 +201,11 @@ final class _ARouter {
 
     /**
      * Build postcard by path and default group
+     * <p>
+     * 处理PathReplaceService 并更改URL地址
+     *
+     * @param path Postcard
+     * @return 返回对应path地址的Postcard
      */
     protected Postcard build(String path) {
         LogUtils.e("_ARouter", "---build---");
@@ -211,10 +216,11 @@ final class _ARouter {
             // navigation(clazz)这种方式是属于根据类型查找，而build(path)是根据名称进行查找
             // 如果应用中没有实现PathReplaceService这个接口，则pService=null
             PathReplaceService pService = ARouter.getInstance().navigation(PathReplaceService.class);
-            // PathReplaceService可以对所有的路径进行预处理，然后返回一个新的值
+            // 更改URL地址
             if (null != pService) {
                 path = pService.forString(path);
             }
+            // 返回对应URl地址的Postcard
             return build(path, extractGroup(path));
         }
     }
@@ -236,6 +242,8 @@ final class _ARouter {
 
     /**
      * Build postcard by path and group
+     * <p>
+     * 返回含有path和group组别的Postcard
      *
      * @param path  路径
      * @param group 分组
@@ -289,14 +297,20 @@ final class _ARouter {
         interceptorService = (InterceptorService) ARouter.getInstance()
                 // 生成一个Postcard对象
                 .build("/arouter/service/interceptor")
+                // 返回一个Postcard
                 //这个navigation()经过多次调用之后，
                 //最终调用的是_ARouter.navigation(context, postcard, requestCode, navigationCallback)方法
                 .navigation();
     }
 
+    /**
+     * @param service service 为 PathReplaceService 时，通过 Warehouse.providersIndex 找到 PathReplaceServiceImpl
+     * @return
+     */
     protected <T> T navigation(Class<? extends T> service) {
-        LogUtils.e("_ARouter", "navigation");
+        LogUtils.e("_ARouter", "navigation: " + service.getSimpleName());
         try {
+            // serviceName 为 PathReplaceService 时，通过 Warehouse.providersIndex 找到 PathReplaceServiceImpl
             Postcard postcard = LogisticsCenter.buildProvider(service.getName());
 
             // Compatible 1.0.5 compiler sdk.

@@ -56,7 +56,7 @@ public class Test1Interceptor implements IInterceptor {
                     callback.onContinue(postcard);
                 }
             });
-
+            // post到主线程
             MainLooper.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {

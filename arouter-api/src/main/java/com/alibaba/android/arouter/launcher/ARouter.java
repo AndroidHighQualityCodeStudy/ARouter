@@ -143,6 +143,8 @@ public final class ARouter {
 
     /**
      * Build the roadmap, draw a postcard.
+     * <p>
+     * 根据path 查找对应的 Postcard
      *
      * @param path Where you go.
      */
@@ -176,12 +178,12 @@ public final class ARouter {
     /**
      * Launch the navigation by type
      *
-     * @param service interface of service
+     * @param service interface of service service service 为 PathReplaceService 时，通过 Warehouse.providersIndex 找到 PathReplaceServiceImpl
      * @param <T>     return type
      * @return instance of service
      */
     public <T> T navigation(Class<? extends T> service) {
-        LogUtils.e("ARouter", "navigation");
+        LogUtils.e("ARouter", "navigation: " + service.getSimpleName());
         return _ARouter.getInstance().navigation(service);
     }
 

@@ -99,17 +99,30 @@ public class InterceptorServiceImpl implements InterceptorService {
         }
     }
 
+    /**
+     * 初始化
+     *
+     * @param context ctx
+     */
     @Override
     public void init(final Context context) {
+        // 执行异步任务
         LogisticsCenter.executor.execute(new Runnable() {
             @Override
             public void run() {
+                // 存在拦截器
+                // interceptors.put(7, Test1Interceptor.class);
                 if (MapUtils.isNotEmpty(Warehouse.interceptorsIndex)) {
+                    // 便利拦截器集合
                     for (Map.Entry<Integer, Class<? extends IInterceptor>> entry : Warehouse.interceptorsIndex.entrySet()) {
+                        // 获取拦截器
                         Class<? extends IInterceptor> interceptorClass = entry.getValue();
                         try {
+                            // 反射创建拦截器对象
                             IInterceptor iInterceptor = interceptorClass.getConstructor().newInstance();
+                            // 初始化拦截器
                             iInterceptor.init(context);
+                            // 添加拦截器
                             Warehouse.interceptors.add(iInterceptor);
                         } catch (Exception ex) {
                             throw new HandlerException(TAG + "ARouter init interceptor error! name = [" + interceptorClass.getName() + "], reason = [" + ex.getMessage() + "]");

@@ -7,6 +7,7 @@ import android.util.Log;
 import com.alibaba.android.arouter.exception.HandlerException;
 import com.alibaba.android.arouter.exception.NoRouteFoundException;
 import com.alibaba.android.arouter.facade.Postcard;
+import com.alibaba.android.arouter.facade.enums.RouteType;
 import com.alibaba.android.arouter.facade.enums.TypeKind;
 import com.alibaba.android.arouter.facade.model.RouteMeta;
 import com.alibaba.android.arouter.facade.template.IInterceptorGroup;
@@ -41,6 +42,8 @@ import static com.alibaba.android.arouter.utils.Consts.SUFFIX_ROOT;
 import static com.alibaba.android.arouter.utils.Consts.TAG;
 
 /**
+ * 基础物流类
+ * <p>
  * LogisticsCenter contain all of the map.
  * <p>
  * 1. Create instance when it first used.
@@ -60,10 +63,10 @@ public class LogisticsCenter {
     static ThreadPoolExecutor executor;
 
     /**
+     * 基础物流类初始化，加载生成的类
      * LogisticsCenter init, load all metas in memory. Demand initialization
      * <p>
      * <p>
-     * 加载生成的类
      */
     public synchronized static void init(Context context, ThreadPoolExecutor tpe) throws HandlerException {
         LogUtils.e("LogisticsCenter", "init");
@@ -101,21 +104,32 @@ public class LogisticsCenter {
             startInit = System.currentTimeMillis();
 
             for (String className : routerMap) {
-                // 加载Root
+                // com.alibaba.android.arouter.routes.ARouter$$Root
                 if (className.startsWith(ROUTE_ROOT_PAKCAGE + DOT + SDK_NAME + SEPARATOR + SUFFIX_ROOT)) {
-                    // new ARouter$$Root$$app().loadInto();
+                    // 反射
+                    // 创建 new ARouter$$Root$$app().loadInto();
+                    //
+                    // 将数据加载到Warehouse.groupsIndex中
+                    // routes.put("service", ARouter$$Group$$service.class);
+                    // routes.put("test", ARouter$$Group$$test.class);
+                    //
                     // This one of root elements, load root.
                     ((IRouteRoot) (Class.forName(className).getConstructor().newInstance())).loadInto(Warehouse.groupsIndex);
                 }
-                // 加载Interceptors
+                // com.alibaba.android.arouter.routes.ARouter$$Interceptors
                 else if (className.startsWith(ROUTE_ROOT_PAKCAGE + DOT + SDK_NAME + SEPARATOR + SUFFIX_INTERCEPTORS)) {
-                    // Load interceptorMeta
+                    // 反射
+                    // 创建 new ARouter$$Interceptors$$app().loadInto(Warehouse.interceptorsIndex)
+                    // interceptors.put(7, Test1Interceptor.class);
                     ((IInterceptorGroup) (Class.forName(className).getConstructor().newInstance())).loadInto(Warehouse.interceptorsIndex);
                 }
-                // 加载Providers
+                // com.alibaba.android.arouter.routes.ARouter$$Providers
                 else if (className.startsWith(ROUTE_ROOT_PAKCAGE + DOT + SDK_NAME + SEPARATOR + SUFFIX_PROVIDERS)) {
                     // new ARouter$$Providers$$app().loadInto();
-                    // Load providerIndex
+                    //
+                    // providers.put("com.alibaba.android.arouter.demo.testservice.HelloService", RouteMeta.build(RouteType.PROVIDER, HelloServiceImpl.class, "/service/hello", "service", null, -1, -2147483648));
+                    // providers.put("com.alibaba.android.arouter.facade.service.SerializationService", RouteMeta.build(RouteType.PROVIDER, JsonServiceImpl.class, "/service/json", "service", null, -1, -2147483648));
+                    // providers.put("com.alibaba.android.arouter.demo.testservice.SingleService", RouteMeta.build(RouteType.PROVIDER, SingleService.class, "/service/single", "service", null, -1, -2147483648));
                     ((IProviderGroup) (Class.forName(className).getConstructor().newInstance())).loadInto(Warehouse.providersIndex);
                 }
             }
@@ -139,7 +153,7 @@ public class LogisticsCenter {
      * <p>
      * 生成一个Postcard对象
      *
-     * @param serviceName interfaceName
+     * @param serviceName serviceName 为 PathReplaceService 时，通过 Warehouse.providersIndex 找到 PathReplaceServiceImpl
      * @return postcard
      */
     public static Postcard buildProvider(String serviceName) {
@@ -160,18 +174,23 @@ public class LogisticsCenter {
      * Completion the postcard by route metas
      * <p>
      * 加载用到的组内数据
+     * <p>
+     * 根据 /arouter/service/interceptor 可找到 com.alibaba.android.arouter.core.InterceptorServiceImpl
      *
      * @param postcard Incomplete postcard, should completion by this method.
      */
     public synchronized static void completion(Postcard postcard) {
         LogUtils.e("_ARouter", "completion");
-        LogUtils.e("_ARouter", "postcard: " + postcard);
+        LogUtils.e("_ARouter", "completion postcard: " + postcard);
         if (null == postcard) {
             LogUtils.e("_ARouter", "NoRouteFoundException");
             throw new NoRouteFoundException(TAG + "No postcard!");
         }
         // 查找对应的打开文件
         RouteMeta routeMeta = Warehouse.routes.get(postcard.getPath());
+
+        LogUtils.e("_ARouter", "completion routeMeta: " + routeMeta);
+
         if (null == routeMeta) {
             LogUtils.e("_ARouter", "null == routeMeta");
             /**
@@ -215,6 +234,8 @@ public class LogisticsCenter {
             postcard.setType(routeMeta.getType());
             postcard.setPriority(routeMeta.getPriority());
             postcard.setExtra(routeMeta.getExtra());
+
+            LogUtils.e("_ARouter", "completion postcard: " + postcard);
 
             Uri rawUri = postcard.getUri();
             if (null != rawUri) {   // Try to set params into bundle.

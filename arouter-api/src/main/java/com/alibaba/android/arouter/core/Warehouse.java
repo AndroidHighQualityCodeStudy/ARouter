@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
+ * 静态化存储数据
  * Storage of route meta and other data.
  *
  * @author zhilong <a href="mailto:zhilong.lzl@alibaba-inc.com">Contact me.</a>
@@ -23,7 +24,9 @@ class Warehouse {
 
     // LogisticsCenter.init() 中被赋值
     // Cache route and metas
-    // 例： routes.put("app", ARouter$$Group$$app.class);
+    // 例：
+    // routes.put("service", ARouter$$Group$$service.class);
+    // routes.put("test", ARouter$$Group$$test.class);
     static Map<String, Class<? extends IRouteGroup>> groupsIndex = new HashMap<>();
     // LogisticsCenter.completion(postcard) 中被赋值
     // atlas.put("/app/ImageActivity", RouteMeta.build(RouteType.ACTIVITY, ImageActivity.class, "/app/imageactivity", "app", null, -1, -2147483648));
@@ -36,6 +39,11 @@ class Warehouse {
     // LogisticsCenter.completion(postcard) 中被赋值
     static Map<Class, IProvider> providers = new HashMap<>();
     // LogisticsCenter.init() 中被赋值
+    //
+    // providers.put("com.alibaba.android.arouter.facade.service.PathReplaceService", RouteMeta.build(RouteType.PROVIDER, PathReplaceServiceImpl.class, "/app/pathreplace", "app", null, -1, -2147483648));
+    // providers.put("com.alibaba.android.arouter.demo.testservice.HelloService", RouteMeta.build(RouteType.PROVIDER, HelloServiceImpl.class, "/service/hello", "service", null, -1, -2147483648));
+    // providers.put("com.alibaba.android.arouter.facade.service.SerializationService", RouteMeta.build(RouteType.PROVIDER, JsonServiceImpl.class, "/service/json", "service", null, -1, -2147483648));
+    // providers.put("com.alibaba.android.arouter.demo.testservice.SingleService", RouteMeta.build(RouteType.PROVIDER, SingleService.class, "/service/single", "service", null, -1, -2147483648));
     static Map<String, RouteMeta> providersIndex = new HashMap<>();
 
     /*
@@ -43,8 +51,7 @@ class Warehouse {
     *  LogisticsCenter.init() 中被赋值;
     *  此处拦截器的存储使用TreeMap，存储的时候，已经对拦截器的优先级进行排序
     * */
-    // 存储 IInterceptor
-    // Cache interceptor
+    // interceptors.put(7, Test1Interceptor.class);
     static Map<Integer, Class<? extends IInterceptor>> interceptorsIndex = new UniqueKeyTreeMap<>("More than one interceptors use same priority [%s]");
     // InterceptorServiceImpl.init()中被赋值
     static List<IInterceptor> interceptors = new ArrayList<>();

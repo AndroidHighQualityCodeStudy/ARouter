@@ -3,6 +3,9 @@ package com.alibaba.android.arouter.demo;
 import android.os.Handler;
 import android.os.Looper;
 
+/**
+ * 主线程
+ */
 public class MainLooper extends Handler {
     private static MainLooper instance = new MainLooper(Looper.getMainLooper());
 
@@ -15,7 +18,8 @@ public class MainLooper extends Handler {
     }
 
     public static void runOnUiThread(Runnable runnable) {
-        if(Looper.getMainLooper().equals(Looper.myLooper())) {
+        // 主线程判断
+        if (Looper.getMainLooper().equals(Looper.myLooper())) {
             runnable.run();
         } else {
             instance.post(runnable);
