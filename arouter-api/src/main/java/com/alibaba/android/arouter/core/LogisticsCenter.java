@@ -78,12 +78,12 @@ public class LogisticsCenter {
         try {
             long startInit = System.currentTimeMillis();
             Set<String> routerMap;
-            // 新版本 或者
+            // 新版本 或者  debug包
             // It will rebuild router map every times when debuggable.
             if (ARouter.debuggable() || PackageUtils.isNewVersion(context)) {
                 logger.info(TAG, "Run with debug mode or new install, rebuild router map.");
                 // These class was generate by arouter-compiler.
-                // 生成文件列表
+                // 获取com.alibaba.android.arouter.routes 路径下的生成文件
                 routerMap = ClassUtils.getFileNameByPackageName(mContext, ROUTE_ROOT_PAKCAGE);
 
                 LogUtils.e(TAG, "routerMap: " + routerMap);
@@ -102,7 +102,7 @@ public class LogisticsCenter {
 
             logger.info(TAG, "Find router map finished, map size = " + routerMap.size() + ", cost " + (System.currentTimeMillis() - startInit) + " ms.");
             startInit = System.currentTimeMillis();
-
+            // 循环com.alibaba.android.arouter.routes 路径下的所有文件
             for (String className : routerMap) {
                 // com.alibaba.android.arouter.routes.ARouter$$Root
                 if (className.startsWith(ROUTE_ROOT_PAKCAGE + DOT + SDK_NAME + SEPARATOR + SUFFIX_ROOT)) {

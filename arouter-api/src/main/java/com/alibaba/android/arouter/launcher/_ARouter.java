@@ -290,6 +290,8 @@ final class _ARouter {
     /**
      * afterInit
      * <p>
+     * 用来加载拦截器
+     *
      * 完成类的加载后，由{@link ARouter.init}调用
      */
     static void afterInit() {
